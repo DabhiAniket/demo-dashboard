@@ -1,92 +1,116 @@
-// Script for HireAI Dashboard Clone
+/**
+ * HireAI Dashboard Core Interactions
+ * Refactored for modularity and performance.
+ */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Handle toggle switches
-    const toggleSwitches = document.querySelectorAll('.toggle-switch');
-    toggleSwitches.forEach(switchEl => {
-        switchEl.addEventListener('click', function(e) {
-            e.preventDefault();
-            this.classList.toggle('active');
-            
-            // If this is the AI Auto Apply toggle, we could show/hide the status
-            if (this.closest('.ai-apply-card')) {
-                const statusIndicator = document.querySelector('.status-indicator');
-                if (this.classList.contains('active')) {
-                    statusIndicator.style.display = 'flex';
-                } else {
-                    statusIndicator.style.display = 'none';
-                }
-            }
-        });
-    });
+    // 1. Mobile Sidebar Logic
+    const sidebar = document.querySelector('aside');
+    const overlay = document.getElementById('sidebar-overlay');
+    const openBtn = document.getElementById('mobile-sidebar-open');
+    const closeBtn = document.getElementById('mobile-sidebar-close');
 
-    // Handle pipeline tabs
-    const pipelineTabs = document.querySelectorAll('.pipeline-tabs .tab');
-    pipelineTabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            // Remove active class from all tabs
-            pipelineTabs.forEach(t => t.classList.remove('active'));
-            // Add active class to clicked tab
-            this.classList.add('active');
-            
-            // Here you would typically filter the pipeline list
-            // For now, it just changes the UI state
-        });
-    });
+    const toggleSidebar = (show) => {
+        if (show) {
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('pointer-events-none', 'opacity-0');
+            overlay.classList.add('opacity-100');
+        } else {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('pointer-events-none', 'opacity-0');
+            overlay.classList.remove('opacity-100');
+        }
+    };
 
-    // Handle sidebar navigation
-    const navItems = document.querySelectorAll('.nav-item');
-    navItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-            // If it's the auto-apply item (has a toggle), don't prevent default completely 
-            // to allow the toggle to work, but don't navigate
-            if (this.querySelector('.toggle-switch') && e.target.classList.contains('toggle-switch')) {
-                return;
-            }
-            
-            e.preventDefault();
-            navItems.forEach(n => n.classList.remove('active'));
-            this.classList.add('active');
-        });
-    });
+    if (openBtn) openBtn.addEventListener('click', () => toggleSidebar(true));
+    if (closeBtn) closeBtn.addEventListener('click', () => toggleSidebar(false));
+    if (overlay) overlay.addEventListener('click', () => toggleSidebar(false));
 
-    // Handle save buttons on job cards
-    const saveBtns = document.querySelectorAll('.save-btn');
-    saveBtns.forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const icon = this.querySelector('i');
-            if (icon.classList.contains('fa-regular')) {
-                icon.classList.remove('fa-regular');
-                icon.classList.add('fa-solid');
-                icon.classList.add('text-purple');
-            } else {
-                icon.classList.add('fa-regular');
-                icon.classList.remove('fa-solid');
-                icon.classList.remove('text-purple');
-            }
-        });
-    });
-    
-    // Copy link button
-    const copyBtn = document.querySelector('.copy-link button');
-    if (copyBtn) {
-        copyBtn.addEventListener('click', function() {
-            const input = this.previousElementSibling;
-            input.select();
-            input.setSelectionRange(0, 99999); // For mobile devices
-            
-            // In a real app, you'd use navigator.clipboard.writeText
-            
-            // Visual feedback
-            const icon = this.querySelector('i');
-            icon.classList.remove('fa-copy');
-            icon.classList.add('fa-check');
-            
-            setTimeout(() => {
-                icon.classList.add('fa-copy');
-                icon.classList.remove('fa-check');
-            }, 2000);
+    // 2. Desktop Sidebar Collapse
+    const desktopToggle = document.getElementById('desktop-sidebar-toggle');
+    if (desktopToggle) {
+        desktopToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('sidebar-hidden');
+            // If the sidebar is hidden, we might want to change the icon or something,
+            // but the user just asked to open/close it.
         });
     }
+
+    // 3. Pipeline Tab Switching & Filtering
+    const pipelineTabContainer = document.querySelector('.bg-muted.p-1');
+    const pipelineItems = document.querySelectorAll('.pipeline-item');
+
+    if (pipelineTabContainer) {
+        const tabs = pipelineTabContainer.querySelectorAll('button');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const filter = tab.getAttribute('data-filter');
+
+                // Update active tab UI
+                tabs.forEach(t => {
+                    t.classList.remove('bg-card', 'text-foreground', 'shadow-sm');
+                    t.classList.add('text-muted-foreground', 'hover:text-foreground');
+                });
+                tab.classList.add('bg-card', 'text-foreground', 'shadow-sm');
+                tab.classList.remove('text-muted-foreground', 'hover:text-foreground');
+
+                // Filter items
+                pipelineItems.forEach(item => {
+                    const status = item.getAttribute('data-status');
+                    if (filter === 'All' || status === filter) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        });
+    }
+
+    // 4. Navigation Item Selection
+    const navLinks = document.querySelectorAll('aside nav a');
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            // Only handle internal-like links
+            const href = link.getAttribute('href');
+            if (href && (href === '#' || href.startsWith('/'))) {
+                e.preventDefault();
+            }
+
+            navLinks.forEach(l => {
+                l.classList.remove('bg-sidebar-accent', 'text-white', 'active');
+                l.classList.add('text-sidebar-foreground');
+                // Hide indicator if exists
+                const indicator = l.querySelector('span.absolute');
+                if (indicator) indicator.classList.add('hidden');
+
+                // Reset icon color
+                const icon = l.querySelector('svg');
+                if (icon) icon.classList.remove('text-white');
+            });
+
+            link.classList.add('bg-sidebar-accent', 'text-white', 'active');
+            link.classList.remove('text-sidebar-foreground');
+            // Show indicator
+            const indicator = link.querySelector('span.absolute');
+            if (indicator) indicator.classList.remove('hidden');
+
+            // Set icon color
+            const icon = link.querySelector('svg');
+            if (icon) icon.classList.add('text-white');
+
+            // Close mobile sidebar on navigation
+            if (window.innerWidth < 1024) {
+                toggleSidebar(false);
+            }
+        });
+    });
+
+    // 5. Tooltip/Hover effects for cards (Simulation)
+    const cards = document.querySelectorAll('.bg-card');
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', () => {
+            // Any subtle hover logic if not handled by CSS
+        });
+    });
 });
